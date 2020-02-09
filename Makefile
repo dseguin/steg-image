@@ -6,15 +6,13 @@ CC ?= gcc
 SRCDIR := src
 BUILDDIR := build
 TARGETDIR := bin
-TARGETENC := $(TARGETDIR)/steg-encode
-TARGETDEC := $(TARGETDIR)/steg-decode
+TARGET := $(TARGETDIR)/steg-image
 
-SOURCEENC := $(SRCDIR)/steganography.c
-SOURCEDEC := $(SRCDIR)/steg_decode.c
-OBJECTENC := $(BUILDDIR)/steganography.o
-OBJECTDEC := $(BUILDDIR)/steg_decode.o
+SOURCE := $(SRCDIR)/steganography.c
+OBJECT := $(BUILDDIR)/steganography.o
 
 CPPCOMMENTDIR := ext/stb
+CPPCOMMENT := $(CPPCOMMENTDIR)/stb_image.h $(CPPCOMMENTDIR)/stb_image_write.h
 
 DEBUGFLAGS := -Wall -Wextra -pedantic -Wformat=2 \
         -Wno-unused-function -Wswitch-enum -Wcast-align -Wpointer-arith \
@@ -27,38 +25,23 @@ RELEASEFLAGS := -O3 -Wall -Wl,--strip-all
 LIB := -lm
 INC := -I ext/stb
 
-all: | rm-comments c89 debug-flag makedirs $(OBJECTENC) $(OBJECTDEC) $(TARGETENC) $(TARGETDEC)
+all: | rm-comments c89 debug-flag makedirs $(OBJECT) $(TARGET)
 
-encoder-debug: | rm-comments c89 debug-flag makedirs $(OBJECTENC) $(TARGETENC)
+debug: | rm-comments c89 debug-flag makedirs $(OBJECT) $(TARGET)
 
-encoder-release: | rm-comments c89 release-flag makedirs $(OBJECTENC) $(TARGETENC)
+release: | rm-comments c89 release-flag makedirs $(OBJECT) $(TARGET)
 
-decoder-debug: | rm-comments c89 debug-flag makedirs $(OBJECTDEC) $(TARGETDEC)
-
-decoder-release: | rm-comments c89 release-flag makedirs $(OBJECTDEC) $(TARGETDEC)
-
-$(TARGETENC): $(OBJECTENC)
+$(TARGET): $(OBJECT)
 	@echo ""
 	@echo " Linking..."
-	@echo " $(CC) $(CFLAGS) $^ -o $(TARGETENC) $(LIB)"; \
-		$(CC) $(CFLAGS) $^ -o $(TARGETENC) $(LIB)
+	@echo " $(CC) $(CFLAGS) $^ -o $(TARGET) $(LIB)"; \
+		$(CC) $(CFLAGS) $^ -o $(TARGET) $(LIB)
 
-$(TARGETDEC): $(OBJECTDEC)
-	@echo ""
-	@echo " Linking..."
-	@echo " $(CC) $(CFLAGS) $^ -o $(TARGETDEC) $(LIB)"; \
-		$(CC) $(CFLAGS) $^ -o $(TARGETDEC) $(LIB)
-
-
-$(OBJECTENC): $(SOURCEENC)
+$(OBJECT): $(SOURCE)
 	@echo " $(CC) $(CFLAGS) $(INC) -c -o $@ $<"; \
 		$(CC) $(CFLAGS) $(INC) -c -o $@ $<
 
-$(OBJECTDEC): $(SOURCEDEC)
-	@echo " $(CC) $(CFLAGS) $(INC) -c -o $@ $<"; \
-		$(CC) $(CFLAGS) $(INC) -c -o $@ $<
-
-rm-comments: $(CPPCOMMENTDIR)/stb_image.h $(CPPCOMMENTDIR)/stb_image_write.h
+rm-comments: $(CPPCOMMENT)
 	@echo " Stripping C++ style comments from $^..."
 	@echo " sed -i.orig 's|[[:blank:]]*//.*||' $^"
 	@sed -i.orig 's|[[:blank:]]*//.*||' $^
