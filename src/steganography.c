@@ -46,7 +46,7 @@ unsigned load_data(const char *filename)
 void embed_data(unsigned e_len, unsigned i_len)
 {
 	unsigned i, j;
-	if(i_len < e_len * 4)
+	if(i_len < e_len * 4 + 64)
 		fprintf(stderr, "Data to embed is larger than image data. Truncating embedded data...\n");
 	for(j = 0; j < 16; j++) {
 		unsigned char sect;
