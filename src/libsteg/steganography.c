@@ -1,24 +1,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "steganography.h"
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
 #include <stb_image.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
-#define SET_ENCODE 0x01
-#define SET_DECODE 0x02
-
 /*image*/
 unsigned char *i_data;
+int i_x, i_y, i_n;
 /*embedded data*/
 unsigned char *e_data;
 /*steg operation to perform*/
 unsigned char op;
-const char *e_file;
+/*image filename*/
 const char *i_file;
-const char *prog_name;
 
 unsigned load_data(const char *filename)
 {
@@ -65,55 +63,6 @@ void embed_data(unsigned e_len, unsigned i_len)
 	}
 }
 
-void print_usage(void)
-{
-	fprintf(stderr, "\nUSAGE: %s [-d|-e DATA_TO_EMBED] -i IMAGE_FILE\n\n", prog_name);
-	fprintf(stderr, "  -i  Use IMAGE_FILE for steganography\n");
-	fprintf(stderr, "  -d  Decode the data embedded in IMAGE_FILE\n");
-	fprintf(stderr, "      and send the result to stdout\n");
-	fprintf(stderr, "  -e  Embed the file DATA_TO_EMBED into IMAGE_FILE\n");
-	fprintf(stderr, "      and send the result to stdout\n\n");
-}
-
-int process_args(int n, char **s)
-{
-	int i;
-	for(i = 0; i < n; i++) {
-		if(s[i][0] != '-')
-			continue;
-		switch(s[i][1]) {
-			case 'e':
-				if(i == n-1) {
-					print_usage();
-					return 1;
-				}
-				op = SET_ENCODE;
-				e_file = s[i+1];
-				break;
-			case 'd':
-				op = SET_DECODE;
-				break;
-			case 'i':
-				if(i == n-1) {
-					print_usage();
-					return 1;
-				}
-				i_file = s[i+1];
-				break;
-			case 'h':
-				print_usage();
-				return 1;
-			default:
-				break;
-		}
-	}
-	if(!op) {
-		print_usage();
-		return 1;
-	}
-	return 0;
-}
-
 unsigned get_data(unsigned i_len)
 {
         unsigned i, j;
@@ -136,7 +85,7 @@ unsigned get_data(unsigned i_len)
         return e_len;
 }
 
-int steg_encode(int x, int y, int n)
+int steg_encode(const char *e_file)
 {
 	unsigned e_len;
 	unsigned char *png = NULL;
@@ -146,8 +95,8 @@ int steg_encode(int x, int y, int n)
 		fprintf(stderr, "%s: %d: load_data: Problem loading data from \"%s\" for embedding.\n", __FILE__, __LINE__ - 1, e_file);
 		return 1;
 	}
-	embed_data(e_len, (unsigned)(x*y*n));
-	png = stbi_write_png_to_mem(i_data, n*x, x, y, n, &png_len);
+	embed_data(e_len, (unsigned)(i_x*i_y*i_n));
+	png = stbi_write_png_to_mem(i_data, i_n*i_x, i_x, i_y, i_n, &png_len);
 	if(!png) {
 		fprintf(stderr, "%s: %d: stbi_write_png_to_mem: Problem converting to PNG image\n", __FILE__, __LINE__ - 2);
 		return 1;
@@ -157,11 +106,11 @@ int steg_encode(int x, int y, int n)
 	return 0;
 }
 
-int steg_decode(int x, int y, int n)
+int steg_decode(void)
 {
 	unsigned e_len;
 	fprintf(stderr, "Extracting embedded data from \"%s\"...\n", i_file);
-	e_len = get_data((unsigned)(x*y*n));
+	e_len = get_data((unsigned)(i_x*i_y*i_n));
 	if(!e_len)
 		return 1;
 	fprintf(stderr, "Writing resulting data to stdout...\n");
@@ -169,24 +118,13 @@ int steg_decode(int x, int y, int n)
 	return 0;
 }
 
-int main(int argc, char **argv)
+int load_image(const char *file)
 {
-	int i_x, i_y, i_n;
-	prog_name = argv[0];
-	if(argc < 4 || argc > 5) {
-		print_usage();
-		return 1;
-	}
-	if(process_args(argc, argv))
-		return 1;
-	i_data = stbi_load(i_file, &i_x, &i_y, &i_n, 0);
+	i_file = file;
+	i_data = stbi_load(file, &i_x, &i_y, &i_n, 0);
 	if(!i_data) {
 		fprintf(stderr, "%s: %d: stbi_load: Problem loading image file \"%s\".\n", __FILE__, __LINE__ - 2, i_file);
 		return 1;
 	}
-	if(op == SET_ENCODE)
-		return steg_encode(i_x, i_y, i_n);
-	else if(op == SET_DECODE)
-		return steg_decode(i_x, i_y, i_n);
 	return 0;
 }

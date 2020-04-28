@@ -4,10 +4,10 @@ Steganographically embed data into the color information of an image. The data i
 
 ### Example
 ```
-$ ./steg-image -i my_image.png -e my_data.bin > output.png
+$ ./steg-run -i my_image.png -e my_data.bin > output.png
 Embedding "my_data.bin" into image data from "my_image.png"...
 Writing resulting PNG image to stdout...
-$ ./steg-image -d -i output.png > output.bin
+$ ./steg-run -d -i output.png > output.bin
 Extracting embedded data from "output.png"...
 Embedded data is 198072 bytes
 Writing resulting data to stdout...
@@ -17,6 +17,7 @@ my_image.png
 output.bin
 output.png
 steg-image
+steg-run
 ```
 
 ### Compiling
@@ -33,7 +34,7 @@ $ make
 
 ### Usage
 ```
-USAGE: ./steg-image [-d|-e DATA_TO_EMBED] -i IMAGE_FILE
+USAGE: ./steg-run [-d|-e DATA_TO_EMBED] -i IMAGE_FILE
 
   -i  Use IMAGE_FILE for steganography
   -d  Decode the data embedded in IMAGE_FILE
@@ -41,6 +42,8 @@ USAGE: ./steg-image [-d|-e DATA_TO_EMBED] -i IMAGE_FILE
   -e  Embed the file DATA_TO_EMBED into IMAGE_FILE
       and send the result to stdout
 ```
+
+`steg-run` is a convenience script that will load the libsteg.so library.
 
 Using the `-e` flag, `steg-image` embeds the file `DATA_TO_EMBED` into the color data from `IMAGE_FILE`, and outputs the resulting PNG image to stdout. Using the `-d` flag, `steg-image` attempts to extract the data embedded in `IMAGE_FILE`, and outputs the resulting data to stdout. In either case, you will want to redirect the output to a file or something. Again, this only works for PNG images currently.
 

@@ -4,17 +4,16 @@
 
 CC ?= gcc
 SRCDIR := src
+INCDIR := $(SRCDIR)/libsteg
+LIBSTEG := lib/libsteg.so
 BUILDDIR := build
 TARGETDIR := bin
 TARGET := $(TARGETDIR)/steg-image
 
-SOURCE := $(SRCDIR)/steganography.c
-OBJECT := $(BUILDDIR)/steganography.o
+SOURCE := $(SRCDIR)/main.c
+OBJECT := $(BUILDDIR)/main.o
 
-CPPCOMMENTDIR := ext/stb
-CPPCOMMENT := $(CPPCOMMENTDIR)/stb_image.h $(CPPCOMMENTDIR)/stb_image_write.h
-
-DEBUGFLAGS := -Wall -Wextra -pedantic -Wformat=2 \
+DEBUGFLAGS := -Wall -Wextra -pedantic -Wformat=2 -Werror -Wfatal-errors \
         -Wno-unused-function -Wswitch-enum -Wcast-align -Wpointer-arith \
         -Wbad-function-cast -Wno-strict-aliasing -Wstrict-overflow=4 \
         -Wfloat-conversion -Wstrict-prototypes -Winline -Wundef \
@@ -22,14 +21,14 @@ DEBUGFLAGS := -Wall -Wextra -pedantic -Wformat=2 \
         -Wfloat-equal -Wredundant-decls -Wold-style-definition -ggdb3 -O0 \
         -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing
 RELEASEFLAGS := -O3 -Wall -Wl,--strip-all
-LIB := -lm
-INC := -I ext/stb
+LIB := -Llib -lsteg
+INC := -I $(INCDIR)
 
-all: | rm-comments c89 debug-flag makedirs $(OBJECT) $(TARGET)
+all: | $(LIBSTEG) c89 debug-flag makedirs $(OBJECT) $(TARGET) cp-runner
 
-debug: | rm-comments c89 debug-flag makedirs $(OBJECT) $(TARGET)
+debug: | $(LIBSTEG) c89 debug-flag makedirs $(OBJECT) $(TARGET) cp-runner
 
-release: | rm-comments c89 release-flag makedirs $(OBJECT) $(TARGET)
+release: | $(LIBSTEG) c89 release-flag makedirs $(OBJECT) $(TARGET) cp-runner
 
 $(TARGET): $(OBJECT)
 	@echo ""
@@ -37,15 +36,19 @@ $(TARGET): $(OBJECT)
 	@echo " $(CC) $(CFLAGS) $^ -o $(TARGET) $(LIB)"; \
 		$(CC) $(CFLAGS) $^ -o $(TARGET) $(LIB)
 
-$(OBJECT): $(SOURCE)
+$(BUILDDIR)/%.o: $(SRCDIR)/%.c
 	@echo " $(CC) $(CFLAGS) $(INC) -c -o $@ $<"; \
 		$(CC) $(CFLAGS) $(INC) -c -o $@ $<
 
-rm-comments: $(CPPCOMMENT)
-	@echo " Stripping C++ style comments from $^..."
-	@echo " sed -i.orig 's|[[:blank:]]*//.*||' $^"
-	@sed -i.orig 's|[[:blank:]]*//.*||' $^
+$(LIBSTEG): $(SRCDIR)/libsteg/libsteg.mk $(SRCDIR)/libsteg/*.c $(SRCDIR)/libsteg/*.h
 	@echo ""
+	@echo " Making libsteg.so..."
+	@echo " make -f $(SRCDIR)/libsteg/libsteg.mk"; \
+		make -f $(SRCDIR)/libsteg/libsteg.mk
+
+cp-runner: runner
+	@cp $< $(TARGETDIR)/steg-run
+	@chmod +x $(TARGETDIR)/steg-run
 
 makedirs:
 	@mkdir -p $(BUILDDIR)
@@ -66,8 +69,8 @@ gnu89:
 	$(eval RELEASEFLAGS="-std=gnu89" "-D_GNU_SOURCE" $(RELEASEFLAGS))
 
 clean:
-	@echo " Cleaning..."; 
-	@echo " $(RM) -r $(BUILDDIR) $(TARGETDIR)" ; \
-		$(RM) -r $(BUILDDIR) $(TARGETDIR)
+	@echo " Cleaning...";
+	@echo " $(RM) -r $(BUILDDIR) $(TARGETDIR) $(LIBSTEG)" ; \
+		$(RM) -r $(BUILDDIR) $(TARGETDIR) $(LIBSTEG)
 
 .PHONY: all makedirs debug release clean tests
