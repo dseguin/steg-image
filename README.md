@@ -34,13 +34,14 @@ $ make
 
 ### Usage
 ```
-USAGE: ./steg-run [-d|-e DATA_TO_EMBED] -i IMAGE_FILE
+USAGE: ./steg-run [-d|-e DATA_TO_EMBED] [-o OUT_FILE] -i IMAGE_FILE
 
   -i  Use IMAGE_FILE for steganography
   -d  Decode the data embedded in IMAGE_FILE
       and send the result to stdout
   -e  Embed the file DATA_TO_EMBED into IMAGE_FILE
       and send the result to stdout
+  -o  Write output to OUT_FILE (defaults to stdout)
 ```
 
 `steg-run` is a convenience script that will load the libsteg.so library.
@@ -64,3 +65,5 @@ The size of the embedded data is an unsigned int that is itself embedded at the 
 
 ### License
 steg-image is released under the open source MIT license.
+
+steg-image makes use of [stb_image](https://github.com/nothings/stb) by Sean Barrett, which is also under the MIT license. License text for `stb_image` can be found [here](https://github.com/nothings/stb/raw/master/LICENSE).
