@@ -163,8 +163,8 @@ int steg_decode(void)
 			return 1; \
 		} \
 		struc.fd = f; \
-		fprintf(stderr, "Writing result to %s...\n", file); \
 		ret = func; \
+		fprintf(stderr, "Writing result to %s...\n", file); \
 		fclose(f); \
 		struc.fd = f_old; \
 		return ret; \

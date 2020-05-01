@@ -29,56 +29,40 @@ int process_args(int n, char **s)
 			continue;
 		switch(s[i][1]) {
 		case 'e':
-			if(i == n-1) {
-				print_usage(s[0]);
+			if(!(e_file = (i == n-1) ? NULL : s[i+1]))
 				return 1;
-			}
 			op = SET_ENCODE;
-			e_file = s[i+1];
 			break;
 		case 'd':
 			op = SET_DECODE;
 			break;
 		case 'i':
-			if(i == n-1) {
-				print_usage(s[0]);
+			if(!(i_file = (i == n-1) ? NULL : s[i+1]))
 				return 1;
-			}
-			i_file = s[i+1];
 			break;
 		case 'o':
-			if(i == n-1) {
-				print_usage(s[0]);
+			if(!(o_file = (i == n-1) ? NULL : s[i+1]))
 				return 1;
-			}
-			o_file = s[i+1];
 			break;
 		case 'h':
-			print_usage(s[0]);
 			return 1;
 		default:
 			break;
 		}
 	}
-	if(!op) {
-		print_usage(s[0]);
-		return 1;
-	}
-	return 0;
+	return (!op) ? 1 : 0;
 }
 
 int main(int argc, char **argv)
 {
-	int ret = 0;
-	if(argc < 4 || argc > 7) {
+	int ret = 1;
+	if(argc < 4 || argc > 7 || process_args(argc, argv)) {
 		print_usage(argv[0]);
-		return 1;
+		return ret;
 	}
-	if(process_args(argc, argv))
-		return 1;
 	steg_init();
 	if(load_image(i_file))
-		return 1;
+		return ret;
 	if(op == SET_ENCODE)
 		ret = steg_encode_to_file(e_file, o_file);
 	else if(op == SET_DECODE)
