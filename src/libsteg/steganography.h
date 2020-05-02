@@ -36,8 +36,8 @@ int steg_encode_to_file(const char *data_file, const char *image_file);
 /* writes result to file, or the struct's fd if "data_file" is NULL */
 int steg_decode_to_file(const char *data_file);
 
-struct steg_image *get_image(void);
-struct steg_embed *get_embedded(void);
+struct steg_image get_image(void);
+struct steg_embed get_embedded(void);
 /* passing NULL will reinitialize struct to zero */
 void set_image(struct steg_image *image);
 void set_embedded(struct steg_embed *embed);

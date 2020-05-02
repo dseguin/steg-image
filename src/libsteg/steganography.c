@@ -10,18 +10,21 @@
 
 #define DEFAULT_IMAGE_OUT stdout
 #define DEFAULT_DATA_OUT stdout
+/* Maximum of 8, minimum of 1 */
+#define EMBED_BITS 2
+#define CLAMP(x,low,high) ((x) < (low) ? (low) : ((x) > (high) ? (high) : (x)))
 
 struct steg_image img = {0};
 struct steg_embed e = {0};
 
-struct steg_image *get_image(void)
+struct steg_image get_image(void)
 {
-	return &img;
+	return img;
 }
 
-struct steg_embed *get_embedded(void)
+struct steg_embed get_embedded(void)
 {
-	return &e;
+	return e;
 }
 
 void set_image(struct steg_image *image)
@@ -69,48 +72,103 @@ unsigned get_data_from_file(const char *filename)
 	return size;
 }
 
-unsigned get_data_from_image(void)
+unsigned _img_capacity(void)
 {
-	unsigned i, j;
-	unsigned size = 0;
-	for(j = 0; j < 16; j++)
-		size = size | ((unsigned)(img.data[j] & 0x03) << j*2);
-	if(size > img.size/4) {
-		fprintf(stderr, "ERROR: Embedded data is larger than image capacity (%u > %u/4). Either size of embedded data is corrupted or there is no embedded data in image.\n", size, img.size);
+	unsigned e_len = (sizeof(e.size)*8)/EMBED_BITS+CLAMP(8%EMBED_BITS,0,1);
+	return (img.size*EMBED_BITS)/8 - e_len;
+}
+
+unsigned _embedded_meta_size(void)
+{
+	return (sizeof(e.size)*8)/EMBED_BITS + CLAMP(8%EMBED_BITS,0,1);
+}
+
+unsigned char _embedded_mask(void)
+{
+	unsigned i;
+	unsigned char mask = 0x01;
+	for(i = 1; i < EMBED_BITS; i++)
+		mask = (mask << 1) | 0x01;
+	return mask;
+}
+
+unsigned _extract_embedded_size(void)
+{
+	unsigned i, meta_bytes, size = 0;
+	unsigned char mask;
+	meta_bytes = _embedded_meta_size();
+	mask = _embedded_mask();
+	for(i = 0; i < meta_bytes; i++)
+		size = size | ((unsigned)(img.data[i] & mask) << i*EMBED_BITS);
+	if(size > _img_capacity()) {
+		fprintf(stderr, "ERROR: Embedded data is larger than image capacity (%u > %u). Either size of embedded data is corrupted or there is no embedded data in image.\n", size, _img_capacity());
 		return 0;
 	}
+	return size;
+}
+
+unsigned get_data_from_image(void)
+{
+	unsigned i, j, k = 0, l = 0, size = 0;
+	l = _embedded_meta_size();
+	size = _extract_embedded_size();
+	if(!size)
+		return 0;
 	fprintf(stderr, "Embedded data is %u bytes\n", size);
 	e.data = malloc(size);
 	e.size = size;
 	/* Lots of bugs in here */
-	for(i = 16; i*4 < img.size && i-16 < e.size; i++) {
+	for(i = 0; i < e.size; i++) {
 		unsigned char sect = 0;
-		for(j = 0; j < 4; j++)
-			sect |= ((img.data[i*4+j] & 0x03) << j*2);
-		e.data[i-16] = sect;
+		for(j = 0; j < 8; j++) {
+			sect |= ((img.data[l] >> k) & 0x01) << j;
+			if(++k == EMBED_BITS) {
+				k = 0;
+				l++;
+			}
+		}
+		e.data[i] = sect;
 	}
 	return e.size;
 }
 
+unsigned _embed_meta_size(void)
+{
+	unsigned i, size, meta_bytes;
+	unsigned char mask;
+	meta_bytes = _embedded_meta_size();
+	mask = _embedded_mask();
+	size = e.size;
+	if(e.size > _img_capacity()) {
+		fprintf(stderr, "Data to embed is larger than image data. Truncating embedded data...\n");
+		size = _img_capacity();
+	}
+	for(i = 0; i < meta_bytes; i++) {
+		unsigned char sect;
+		sect = (img.data[i] & (mask^0xff)) |
+			(unsigned char)((size >> i*EMBED_BITS) & (unsigned)mask);
+		img.data[i] = sect;
+	}
+	return size;
+}
+
 void embed_data(void)
 {
-	unsigned i, j;
-	if(img.size < e.size * 4 + 64)
-		fprintf(stderr, "Data to embed is larger than image data. Truncating embedded data...\n");
-	for(j = 0; j < 16; j++) {
-		unsigned char sect;
-		sect = (img.data[j] & 0xFC) |
-			(unsigned char)((e.size >> j*2) & 0x00000003);
-		img.data[j] = sect;
-	}
+	unsigned i, j, meta_bytes, size = 0, k = 0, l = 0;
+	size = _embed_meta_size();
+	meta_bytes = _embedded_meta_size();
 	/* Lots of bugs in here */
-	for(i = 16; i*4 < img.size && i-16 < e.size; i++) {
-		for(j = 0; j < 4; j++) {
-			unsigned char sect;
-			sect = (e.data[i-16] >> j*2) & 0x03;
-			img.data[i*4+j] &= 0xFC;
-			img.data[i*4+j] |= sect;
+	for(i = meta_bytes; l < size; i++) {
+		unsigned char sect = 0;
+		for(j = 0; j < EMBED_BITS; j++) {
+			sect |= ((e.data[l] >> k) & 0x01) << j;
+			if(++k == 8) {
+				k = 0;
+				l++;
+			}
 		}
+		img.data[i] &= (_embedded_mask()^0xff);
+		img.data[i] |= sect;
 	}
 }
 
