@@ -13,6 +13,7 @@ TARGET := $(TARGETDIR)/steg-image
 SOURCE := $(SRCDIR)/main.c
 OBJECT := $(BUILDDIR)/main.o
 
+BUILDTYPE := debug
 DEBUGFLAGS := -Wall -Wextra -pedantic -Wformat=2 -Werror -Wfatal-errors \
         -Wno-unused-function -Wswitch-enum -Wcast-align -Wpointer-arith \
         -Wbad-function-cast -Wno-strict-aliasing -Wstrict-overflow=4 \
@@ -28,7 +29,7 @@ all: | $(LIBSTEG) c89 debug-flag makedirs $(OBJECT) $(TARGET) cp-runner
 
 debug: | $(LIBSTEG) c89 debug-flag makedirs $(OBJECT) $(TARGET) cp-runner
 
-release: | $(LIBSTEG) c89 release-flag makedirs $(OBJECT) $(TARGET) cp-runner
+release: | change-buildtype $(LIBSTEG) c89 release-flag makedirs $(OBJECT) $(TARGET) cp-runner
 
 $(TARGET): $(OBJECT)
 	@echo ""
@@ -43,8 +44,8 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.c
 $(LIBSTEG): $(SRCDIR)/libsteg/libsteg.mk $(SRCDIR)/libsteg/*.c $(SRCDIR)/libsteg/*.h
 	@echo ""
 	@echo " Making libsteg.so..."
-	@echo " make -f $(SRCDIR)/libsteg/libsteg.mk"; \
-		make -f $(SRCDIR)/libsteg/libsteg.mk
+	@echo " make -f $(SRCDIR)/libsteg/libsteg.mk $(BUILDTYPE)"; \
+		make -f $(SRCDIR)/libsteg/libsteg.mk $(BUILDTYPE)
 
 cp-runner: runner
 	@cp $< $(TARGETDIR)/steg-run
@@ -53,6 +54,9 @@ cp-runner: runner
 makedirs:
 	@mkdir -p $(BUILDDIR)
 	@mkdir -p $(TARGETDIR)
+
+change-buildtype:
+	$(eval BUILDTYPE=release)
 
 debug-flag:
 	$(eval CFLAGS += $(DEBUGFLAGS))
