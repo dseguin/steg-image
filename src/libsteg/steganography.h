@@ -41,5 +41,8 @@ struct steg_embed get_embedded(void);
 /* passing NULL will reinitialize struct to zero */
 void set_image(struct steg_image *image);
 void set_embedded(struct steg_embed *embed);
+/* number of bits per channel to use as embedded storage */
+unsigned get_num_bits(void);
+void set_num_bits(unsigned n);
 
 #endif /*_STEGANOGRAPHY_H*/

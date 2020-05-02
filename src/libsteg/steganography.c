@@ -10,12 +10,13 @@
 
 #define DEFAULT_IMAGE_OUT stdout
 #define DEFAULT_DATA_OUT stdout
+#define DEFAULT_EMBED_BITS 2
 /* Maximum of 8, minimum of 1 */
-#define EMBED_BITS 2
 #define CLAMP(x,low,high) ((x) < (low) ? (low) : ((x) > (high) ? (high) : (x)))
 
 struct steg_image img = {0};
 struct steg_embed e = {0};
+unsigned embed_bits = DEFAULT_EMBED_BITS;
 
 struct steg_image get_image(void)
 {
@@ -25,6 +26,11 @@ struct steg_image get_image(void)
 struct steg_embed get_embedded(void)
 {
 	return e;
+}
+
+unsigned get_num_bits(void)
+{
+	return embed_bits;
 }
 
 void set_image(struct steg_image *image)
@@ -45,6 +51,11 @@ void set_embedded(struct steg_embed *embed)
 		e = *embed;
 	else
 		memset(&e, 0, sizeof(e));
+}
+
+void set_num_bits(unsigned n)
+{
+	embed_bits = n;
 }
 
 unsigned get_data_from_file(const char *filename)
@@ -74,20 +85,20 @@ unsigned get_data_from_file(const char *filename)
 
 unsigned _img_capacity(void)
 {
-	unsigned e_len = (sizeof(e.size)*8)/EMBED_BITS+CLAMP(8%EMBED_BITS,0,1);
-	return (img.size*EMBED_BITS)/8 - e_len;
+	unsigned e_len = (sizeof(e.size)*8)/embed_bits+CLAMP(8%embed_bits,0,1);
+	return (img.size*embed_bits)/8 - e_len;
 }
 
 unsigned _embedded_meta_size(void)
 {
-	return (sizeof(e.size)*8)/EMBED_BITS + CLAMP(8%EMBED_BITS,0,1);
+	return (sizeof(e.size)*8)/embed_bits + CLAMP(8%embed_bits,0,1);
 }
 
 unsigned char _embedded_mask(void)
 {
 	unsigned i;
 	unsigned char mask = 0x01;
-	for(i = 1; i < EMBED_BITS; i++)
+	for(i = 1; i < embed_bits; i++)
 		mask = (mask << 1) | 0x01;
 	return mask;
 }
@@ -99,7 +110,7 @@ unsigned _extract_embedded_size(void)
 	meta_bytes = _embedded_meta_size();
 	mask = _embedded_mask();
 	for(i = 0; i < meta_bytes; i++)
-		size = size | ((unsigned)(img.data[i] & mask) << i*EMBED_BITS);
+		size = size | ((unsigned)(img.data[i] & mask) << i*embed_bits);
 	if(size > _img_capacity()) {
 		fprintf(stderr, "ERROR: Embedded data is larger than image capacity (%u > %u). Either size of embedded data is corrupted or there is no embedded data in image.\n", size, _img_capacity());
 		return 0;
@@ -122,7 +133,7 @@ unsigned get_data_from_image(void)
 		unsigned char sect = 0;
 		for(j = 0; j < 8; j++) {
 			sect |= ((img.data[l] >> k) & 0x01) << j;
-			if(++k == EMBED_BITS) {
+			if(++k == embed_bits) {
 				k = 0;
 				l++;
 			}
@@ -146,7 +157,7 @@ unsigned _embed_meta_size(void)
 	for(i = 0; i < meta_bytes; i++) {
 		unsigned char sect;
 		sect = (img.data[i] & (mask^0xff)) |
-			(unsigned char)((size >> i*EMBED_BITS) & (unsigned)mask);
+			(unsigned char)((size >> i*embed_bits) & (unsigned)mask);
 		img.data[i] = sect;
 	}
 	return size;
@@ -160,7 +171,7 @@ void embed_data(void)
 	/* Lots of bugs in here */
 	for(i = meta_bytes; l < size; i++) {
 		unsigned char sect = 0;
-		for(j = 0; j < EMBED_BITS; j++) {
+		for(j = 0; j < embed_bits; j++) {
 			sect |= ((e.data[l] >> k) & 0x01) << j;
 			if(++k == 8) {
 				k = 0;
@@ -176,6 +187,7 @@ int steg_encode(const char *e_file)
 {
 	unsigned char *png = NULL;
 	int png_len = 0;
+	fprintf(stderr, "Using %u least-significant bits (LSB) per color channel...\n", embed_bits);
 	fprintf(stderr, "Embedding \"%s\" into image data from \"%s\"...\n", e_file, img.filename);
 	if(!get_data_from_file(e_file)) {
 		fprintf(stderr, "%s: %d: get_data_from_file: Problem loading data from \"%s\" for embedding.\n", __FILE__, __LINE__ - 1, e_file);
@@ -196,6 +208,7 @@ int steg_encode(const char *e_file)
 
 int steg_decode(void)
 {
+	fprintf(stderr, "Using %u least-significant bits (LSB) per color channel...\n", embed_bits);
 	fprintf(stderr, "Extracting embedded data from \"%s\"...\n", img.filename);
 	get_data_from_image();
 	if(!e.size)
